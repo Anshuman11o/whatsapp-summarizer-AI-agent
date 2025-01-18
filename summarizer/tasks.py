@@ -8,9 +8,20 @@ from moviepy import *
 import tempfile
 from pydub import AudioSegment
 import whisper
+import logging
 
 # Load Whisper model
 whisper_model = whisper.load_model("base")
+
+# Configure the logger
+logging.basicConfig(
+    filename="media_processing.log",
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+logger = logging.getLogger()
+
 
 def convert_to_wav(file_path):
     """Convert audio to WAV format."""
@@ -23,12 +34,24 @@ def pdf_to_text(file_bytes):
     response_body = ""
     try:
         reader = PdfReader(file_bytes)
-        text = " ".join([page.extract_text() for page in reader.pages])
-        response_body += f"\nExtracted text from PDF:\n{text}"
+        if reader.is_encrypted:
+            logger.warning("PDF file is encrypted. Attempting to decrypt...")
+            # Attempt decryption (if you have the password or expect no password)
+            try:
+                reader.decrypt("")
+            except Exception as e:
+                logger.error(f"Failed to decrypt PDF: {e}")
+                return "Error: Unable to process encrypted PDF."
+            
+        # Extract text
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text()
+        logger.info("PDF processed successfully.")
+        return text
     except Exception as e:
-        response_body += f"\nFailed to process PDF: {str(e)}"
-
-    return response_body
+        logger.error(f"Failed to process PDF: {e}")
+        return f"Error: {e}"
 
 def image_to_text(file_bytes):
     response_body = ""

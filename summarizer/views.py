@@ -6,6 +6,7 @@ import os
 import requests
 import io
 from .tasks import *
+from .utils import *
 
 # Initialize Twilio Client
 client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
@@ -20,6 +21,7 @@ def whatsapp_webhook(request):
     num_media = int(post_data.get("NumMedia", 0))
     sender_number = post_data.get("From")
     response_body = ""
+    type = ""
 
     if num_media > 0:
         for i in range(num_media):
@@ -40,6 +42,7 @@ def whatsapp_webhook(request):
                         to=sender_number
                     )
                     response_body = pdf_to_text(file_bytes)
+                    type = "PDF"
                     
                 # Handle Images
                 elif "image" in media_type:
@@ -49,6 +52,7 @@ def whatsapp_webhook(request):
                         to=sender_number
                     )
                     response_body = image_to_text(file_bytes)
+                    type = "image"
 
                 # Handle Audio
                 elif "audio" in media_type:
@@ -58,6 +62,7 @@ def whatsapp_webhook(request):
                         to=sender_number
                     )
                     response_body = audio_to_text(file_bytes)
+                    type = "audio"
 
                 # Handle Videos
                 elif "video" in media_type:
@@ -67,6 +72,7 @@ def whatsapp_webhook(request):
                         to=sender_number
                     )
                     response_body = video_to_text(file_bytes,media_url)
+                    type = "video"
 
             except Exception as e:
                 response_body += f"\nFailed to download or process media file: {str(e)}"
@@ -80,7 +86,15 @@ def whatsapp_webhook(request):
             response_body = "Please provide a longer message for summarization."
         else:
             # Here you can add summarization logic for text input
+            client.messages.create(
+                        from_='whatsapp:+14155238886',
+                        body="Processing text...",
+                        to=sender_number
+                    )
+            response_body = generate_summary(response_body)
             response_body = f"Thanks for your message: {message}"
+
+    response_body = generate_summary(response_body, type)
 
     # Send responses in batches of 1600 characters
     for chunk in split_message(response_body):
