@@ -9,18 +9,27 @@ import tempfile
 from pydub import AudioSegment
 import whisper
 import logging
+from docx import Document
+import openpyxl
+from pptx import Presentation
+from logging.handlers import RotatingFileHandler
 
 # Load Whisper model
 whisper_model = whisper.load_model("base")
 
-# Configure the logger
-logging.basicConfig(
-    filename="media_processing.log",
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+# Configure rotating file handler for logging
+log_file = "media_processing.log"
+log_handler = RotatingFileHandler(
+    log_file, maxBytes=5 * 1024 * 1024, backupCount=5  # 5 MB per file, keep 5 backups
 )
+log_handler.setLevel(logging.DEBUG)
+log_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+log_handler.setFormatter(log_formatter)
 
+# Set up the logger
 logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+logger.addHandler(log_handler)
 
 
 def convert_to_wav(file_path):
@@ -125,3 +134,53 @@ def video_to_text(file_bytes,media_url=None):
         response_body += f"\nFailed to process Video: {str(e)}"
 
     return response_body
+
+def word_to_text(file_bytes):
+    try:
+        doc = Document(file_bytes)
+        text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+        return f"Extracted text from Word Document:\n{text}"
+    except Exception as e:
+        logger.error(f"Failed to process Word file: {e}")
+        return f"Error processing Word file: {e}"
+
+def excel_to_text(file_bytes):
+    try:
+        workbook = openpyxl.load_workbook(file_bytes)
+        text = ""
+        for sheet in workbook.worksheets:
+            text += f"\nSheet: {sheet.title}\n"
+            for row in sheet.iter_rows(values_only=True):
+                text += " ".join(map(str, row)) + "\n"
+        return f"Extracted text from Excel Document:\n{text}"
+    except Exception as e:
+        logger.error(f"Failed to process Excel file: {e}")
+        return f"Error processing Excel file: {e}"
+
+def ppt_to_text(file_bytes):
+    """
+    Extract text from a PowerPoint file.
+    """
+    try:
+        logger.debug("Starting PowerPoint file processing...")
+        presentation = Presentation(file_bytes)
+        text = ""
+        for slide in presentation.slides:
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    text += shape.text + "\n"
+
+        logger.info("PowerPoint file processed successfully.")
+        
+        # Log the length of the extracted text
+        logger.debug(f"Extracted text length: {len(text)} characters.")
+        
+        # Optionally log a snippet of the text (first 500 characters)
+        logger.debug(f"Extracted text snippet: {text[:500]}")
+
+        return f"Extracted text from PowerPoint Document:\n{text}"
+
+    except Exception as e:
+        logger.error(f"Failed to process PowerPoint file: {e}")
+        print(f"PowerPoint Processing Error: {e}")  # Debug for terminal
+        return f"Error processing PowerPoint file: {e}"

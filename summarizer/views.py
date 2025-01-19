@@ -34,74 +34,70 @@ def whatsapp_webhook(request):
                 response.raise_for_status()
                 file_bytes = io.BytesIO(response.content)
 
-                # Handle PDFs
                 if "application/pdf" in media_type:
-                    client.messages.create(
-                        from_='whatsapp:+14155238886',
-                        body="Processing PDF file...",
-                        to=sender_number
-                    )
+                    logger.debug("Received PDF file for processing.")
+                    client.messages.create(from_='whatsapp:+14155238886', body="Processing PDF file...", to=sender_number)
                     response_body = pdf_to_text(file_bytes)
                     type = "PDF"
-                    
-                # Handle Images
                 elif "image" in media_type:
-                    client.messages.create(
-                        from_='whatsapp:+14155238886',
-                        body="Processing image file...",
-                        to=sender_number
-                    )
+                    logger.debug("Received Image file for processing.")
+                    client.messages.create(from_='whatsapp:+14155238886', body="Processing image file...", to=sender_number)
                     response_body = image_to_text(file_bytes)
                     type = "image"
-
-                # Handle Audio
                 elif "audio" in media_type:
-                    client.messages.create(
-                        from_='whatsapp:+14155238886',
-                        body="Processing audio file...",
-                        to=sender_number
-                    )
+                    logger.debug("Received Audio file for processing.")
+                    client.messages.create(from_='whatsapp:+14155238886', body="Processing audio file...", to=sender_number)
                     response_body = audio_to_text(file_bytes)
                     type = "audio"
-
-                # Handle Videos
                 elif "video" in media_type:
-                    client.messages.create(
-                        from_='whatsapp:+14155238886',
-                        body="Processing video file...",
-                        to=sender_number
-                    )
-                    response_body = video_to_text(file_bytes,media_url)
+                    logger.debug("Received Video file for processing.")
+                    client.messages.create(from_='whatsapp:+14155238886', body="Processing video file...", to=sender_number)
+                    response_body = video_to_text(file_bytes, media_url)
                     type = "video"
+                elif "application/vnd.openxmlformats-officedocument.wordprocessingml.document" in media_type:
+                    logger.debug("Received Word file for processing.")
+                    client.messages.create(from_='whatsapp:+14155238886', body="Processing Word file...", to=sender_number)
+                    response_body = word_to_text(file_bytes)
+                    type = "Word"
+                elif "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" in media_type:
+                    logger.debug("Received Excel file for processing.")
+                    client.messages.create(from_='whatsapp:+14155238886', body="Processing Excel file...", to=sender_number)
+                    response_body = excel_to_text(file_bytes)
+                    type = "Excel"
+                elif "application/vnd.openxmlformats-officedocument.presentationml.presentation" in media_type:
+                    logger.debug("Received PowerPoint file for processing.")
+                    client.messages.create(from_='whatsapp:+14155238886', body="Processing PowerPoint file...", to=sender_number)
+                    try:
+                        response_body = ppt_to_text(file_bytes)
+                        type = "PowerPoint"
+                    except Exception as e:
+                        response_body = handle_error(e, "Error processing PowerPoint file")
+                        logger.error(f"Error processing PowerPoint file: {e}")
 
             except Exception as e:
-                response_body += f"\nFailed to download or process media file: {str(e)}"
+                response_body = handle_error(e,"Error processing media file") #make sure the file is not corrupted and is in the limit size of __?
+                print(f"Media Processing Error: {e}")
+                logger.error(f"Error processing media file: {e}")
 
     else:
-        # Handle plain text messages
         message = post_data.get("Body", "").strip()
         if message.lower() == "hi":
             response_body = f"Hi, how's it going?"
         elif len(message.split()) < 5:
             response_body = "Please provide a longer message for summarization."
         else:
-            # Here you can add summarization logic for text input
-            client.messages.create(
-                        from_='whatsapp:+14155238886',
-                        body="Processing text...",
-                        to=sender_number
-                    )
-            response_body = generate_summary(response_body)
-            response_body = f"Thanks for your message: {message}"
+            client.messages.create(from_='whatsapp:+14155238886', body="Processing text...", to=sender_number)
+            try:
+                response_body = generate_summary(response_body)
+            except Exception as e:
+                response_body = handle_error(e)
 
-    response_body = generate_summary(response_body, type)
+    try:
+        response_body = generate_summary(response_body, type)
+    except Exception as e:
+        response_body = handle_error(e)
 
-    # Send responses in batches of 1600 characters
     for chunk in split_message(response_body):
-        client.messages.create(
-            from_='whatsapp:+14155238886',
-            body=chunk,
-            to=sender_number
-        )
+        client.messages.create(from_='whatsapp:+14155238886', body=chunk, to=sender_number)
 
     return HttpResponse("Webhook processed successfully")
