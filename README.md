@@ -10,3 +10,7 @@ Content specific summary generation ability
 Technical Details
 Implemented using Python and Django for backend processing, Whisper, Pytesseract and Moviepy liabraries for data extraction, OpenAI API for content analysis, and Twilio API for WhatsApp integration. 
 Utilized advanced NLP techniques like prompt engineering for accurate summarization and content specific summaries
+
+![Whatsapp gallery image 1](https://github.com/user-attachments/assets/8fea2c18-296b-4e5a-bd8f-07579ed10c4f)
+![Whatsaap gallery image 2](https://github.com/user-attachments/assets/e4876358-8a88-4136-863c-c064aca0e544)
+
