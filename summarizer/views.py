@@ -88,7 +88,7 @@ def whatsapp_webhook(request):
         else:
             client.messages.create(from_='whatsapp:+14155238886', body="Processing text...", to=sender_number)
             try:
-                response_body = generate_summary(response_body)
+                response_body = generate_summary(message)
             except Exception as e:
                 response_body = handle_error(e)
 
