@@ -86,8 +86,8 @@ def generate_summary(content, media_type="text"):
                 frequency_penalty=0.0,
                 presence_penalty=0.0
             )
-            if not detailed_summary or 'error' in detailed_summary:
-                logger.error(f"OpenAI error response: {detailed_summary}")
+            if not detailed_response or 'error' in detailed_response:
+                logger.error(f"OpenAI error response: {detailed_response}")
 
             detailed_summary = detailed_response.choices[0].message.content.strip()
 
